@@ -24,6 +24,7 @@ module Attribute = struct
     | CppNew
     | CppNewArray
     | JavaResource of JavaClassName.t
+    | CSharpResource of CSharpClassName.t
     | ObjCAlloc
   [@@deriving compare, equal]
 
@@ -42,6 +43,8 @@ module Attribute = struct
         F.fprintf fmt "new[]"
     | JavaResource class_name ->
         F.fprintf fmt "resource %a" JavaClassName.pp class_name
+    | CSharpResource class_name ->
+        F.fprintf fmt "resource %a" CSharpClassName.pp class_name
     | ObjCAlloc ->
         F.fprintf fmt "alloc"
 
@@ -362,6 +365,8 @@ module Attribute = struct
     | ObjCAlloc, _ ->
         true
     | JavaResource _, _ ->
+        is_released
+    | CSharpResource _, _ ->
         is_released
     | _ ->
         false
