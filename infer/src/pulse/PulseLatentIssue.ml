@@ -61,7 +61,8 @@ let is_manifest (astate : AbductiveDomain.summary) =
 let should_report (astate : AbductiveDomain.summary) (diagnostic : Diagnostic.t) =
   match diagnostic with
   | MemoryLeak _
-  | ResourceLeak _
+  | JavaResourceLeak _
+  | CSharpResourceLeak _
   | RetainCycle _
   | StackVariableAddressEscape _
   | TaintFlow _

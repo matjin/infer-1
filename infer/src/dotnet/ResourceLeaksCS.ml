@@ -30,6 +30,42 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
         false
 
 
+          (* Should return void, and take an event handler (and probably abstracted out to it's own function) *)
+          (* could also check the existence of the event given by the method_name *)
+  let is_event_handler_type _tenv procname =
+      match procname with 
+      | Procname.CSharp csharp_procname ->
+              let _ret = 
+                  (* ( Printf.printf "%s " (Typ.to_string (Procname.CSharp.get_return_typ csharp_procname))); *)
+                  (match Procname.CSharp.get_return_typ csharp_procname with
+              | {desc = Tvoid; _} -> true
+              | _ -> false)
+              in let params = 
+              List.exists ~f:(fun param -> match param with | Procname.Parameter.CSharpParameter cs_param -> String.is_substring ~substring:"Event" (Typ.to_string cs_param) | _ -> false) (Procname.get_parameters procname)
+              in (*Printf.printf " test type %B %B " ret params;*) (*ret &&*) params
+      | _ -> false
+
+
+  let adds_event_handler tenv procname = 
+      match procname with
+      | Procname.CSharp _csharp_procname ->
+          let name_check = 
+              String.is_prefix ~prefix:"add_" (Procname.get_method procname)
+          in let ret_val = if name_check then is_event_handler_type tenv procname else false
+          in (*Printf.printf "test add %B %B\n" name_check ret_val;*) ret_val
+      | _ -> false
+
+
+  let removes_event_handler tenv procname =
+      match procname with
+      | Procname.CSharp _csharp_procname ->
+          let name_check = 
+              String.is_prefix ~prefix:"remove_" (Procname.get_method procname)
+          in let ret_val = if name_check then is_event_handler_type tenv procname else false
+          in (*Printf.printf "test remove %B %B\n" name_check ret_val;*) ret_val
+      | _ -> false
+
+
   let acquires_resource tenv procname =
     (* We assume all constructors of a subclass of Closeable acquire a resource *)
     Procname.is_constructor procname && is_closeable_procname tenv procname
@@ -62,7 +98,7 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
     in
     match instr with
     | Call (_return, Direct callee_procname, HilExp.AccessExpression allocated :: _, _, _loc)
-      when acquires_resource tenv callee_procname && is_not_enumerable ->
+      when (acquires_resource tenv callee_procname && is_not_enumerable) || (adds_event_handler tenv callee_procname) ->
         let typename =
           match callee_procname with
           | Procname.CSharp csharp_procname ->
@@ -74,7 +110,7 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
           (HilExp.AccessExpression.to_access_path allocated)
           typename astate
     | Call (_, Direct callee_procname, [actual], _, _loc)
-      when releases_resource tenv callee_procname -> (
+      when releases_resource tenv callee_procname || removes_event_handler tenv callee_procname -> (
       match actual with
       | HilExp.AccessExpression access_expr ->
           ResourceLeakCSDomain.release_resource

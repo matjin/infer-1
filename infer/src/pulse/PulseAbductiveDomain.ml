@@ -1352,7 +1352,11 @@ let summary_of_post tenv pdesc location astate0 =
           Ok (invalidate_locals pdesc astate)
       | Error (unreachable_location, JavaResource class_name, trace) ->
           Error
-            (`ResourceLeak
+            (`JavaResourceLeak
+              (astate, class_name, trace, Option.value unreachable_location ~default:location) )
+      | Error (unreachable_location, CSharpResource class_name, trace) ->
+          Error
+            (`CSharpResourceLeak
               (astate, class_name, trace, Option.value unreachable_location ~default:location) )
       | Error (unreachable_location, allocator, trace) ->
           Error
