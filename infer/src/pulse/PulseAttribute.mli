@@ -45,6 +45,7 @@ type t =
   | MustBeValid of Timestamp.t * Trace.t * Invalidation.must_be_valid_reason option
   | MustNotBeTainted of Timestamp.t * Taint.t * Trace.t
   | JavaResourceReleased
+  | CSharpResourceReleased
   | PropagateTaintFrom of taint_in list
   | RefCounted
   | SourceOriginOfCopy of PulseAbstractValue.t

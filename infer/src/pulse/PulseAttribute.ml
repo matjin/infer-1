@@ -42,9 +42,9 @@ module Attribute = struct
     | CppNewArray ->
         F.fprintf fmt "new[]"
     | JavaResource class_name ->
-        F.fprintf fmt "resource %a" JavaClassName.pp class_name
+        F.fprintf fmt "java resource %a" JavaClassName.pp class_name
     | CSharpResource class_name ->
-        F.fprintf fmt "resource %a" CSharpClassName.pp class_name
+        F.fprintf fmt "csharp resource %a" CSharpClassName.pp class_name
     | ObjCAlloc ->
         F.fprintf fmt "alloc"
 
@@ -68,6 +68,7 @@ module Attribute = struct
     | MustBeValid of Timestamp.t * Trace.t * Invalidation.must_be_valid_reason option
     | MustNotBeTainted of Timestamp.t * Taint.t * Trace.t
     | JavaResourceReleased
+    | CSharpResourceReleased
     | PropagateTaintFrom of taint_in list (* [v -> PropagateTaintFrom \[v1; ..; vn\]] does not
                                              retain [v1] to [vn], in fact they should be collected
                                              when they become unreachable *)
@@ -110,6 +111,7 @@ module Attribute = struct
   let isl_abduced_rank = Variants.islabduced.rank
 
   let java_resource_released_rank = Variants.javaresourcereleased.rank
+  let csharp_resource_released_rank = Variants.csharpresourcereleased.rank
 
   let must_be_initialized_rank = Variants.mustbeinitialized.rank
 
@@ -201,6 +203,10 @@ module Attribute = struct
           trace
           (timestamp :> int)
     | JavaResourceReleased ->
+            Printf.printf "\nhello attribute javaresourcereleased\n";
+        F.pp_print_string f "Released"
+    | CSharpResourceReleased ->
+            Printf.printf "\nhello attribute csharpresourcereleased\n";
         F.pp_print_string f "Released"
     | PropagateTaintFrom taints_in ->
         F.fprintf f "PropagateTaintFrom([%a])" (Pp.seq ~sep:";" pp_taint_in) taints_in
@@ -231,6 +237,12 @@ module Attribute = struct
         true
     | Invalid _ | Allocated _ | ISLAbduced _ ->
         Config.pulse_isl
+    | JavaResourceReleased ->
+            Printf.printf "\nhello attribute javaresourcereleased\n";
+            false
+    | CSharpResourceReleased ->
+            Printf.printf "\nhello attribute csharpresourcereleased\n";
+            false
     | AddressOfCppTemporary _
     | AddressOfStackVariable _
     | AlwaysReachable
@@ -238,7 +250,6 @@ module Attribute = struct
     | CopiedVar _
     | DynamicType _
     | EndOfCollection
-    | JavaResourceReleased
     | PropagateTaintFrom _
     | SourceOriginOfCopy _
     | StdMoved
@@ -255,6 +266,12 @@ module Attribute = struct
   let is_suitable_for_post = function
     | MustBeInitialized _ | MustBeValid _ | MustNotBeTainted _ | UnreachableAt _ ->
         false
+    | JavaResourceReleased ->
+            Printf.printf "\nhello attribute javaresourcereleased\n";
+            true
+    | CSharpResourceReleased ->
+            Printf.printf "\nhello attribute csharpresourcereleased\n";
+            true
     | AddressOfCppTemporary _
     | AddressOfStackVariable _
     | Allocated _
@@ -265,7 +282,6 @@ module Attribute = struct
     | EndOfCollection
     | ISLAbduced _
     | Invalid _
-    | JavaResourceReleased
     | PropagateTaintFrom _
     | RefCounted
     | SourceOriginOfCopy _
@@ -285,6 +301,12 @@ module Attribute = struct
         false
     | Tainted {intra_procedural_only} ->
         not intra_procedural_only
+    | JavaResourceReleased ->
+            Printf.printf "\nhello attribute javaresourcereleased\n";
+            true
+    | CSharpResourceReleased ->
+            Printf.printf "\nhello attribute csharpresourcereleased\n";
+            true
     | AddressOfCppTemporary _
     | AddressOfStackVariable _
     | Allocated _
@@ -297,7 +319,6 @@ module Attribute = struct
     | MustBeInitialized _
     | MustBeValid _
     | MustNotBeTainted _
-    | JavaResourceReleased
     | PropagateTaintFrom _
     | RefCounted
     | StdMoved
@@ -341,13 +362,18 @@ module Attribute = struct
     | CopiedVar _ | SourceOriginOfCopy _ | Tainted {intra_procedural_only= true} ->
         L.die InternalError "Unexpected attribute %a in the summary of %a" pp attr Procname.pp
           proc_name
+    | JavaResourceReleased ->
+            Printf.printf "\nhello attribute javaresourcereleased\n";
+            JavaResourceReleased
+    | CSharpResourceReleased ->
+            Printf.printf "\nhello attribute CSharpresourcereleased\n";
+            CSharpResourceReleased
     | ( AddressOfCppTemporary _
       | AddressOfStackVariable _
       | AlwaysReachable
       | Closure _
       | DynamicType _
       | EndOfCollection
-      | JavaResourceReleased
       | RefCounted
       | StdMoved
       | StdVectorReserve
@@ -363,12 +389,17 @@ module Attribute = struct
     | CppNew, Some (CppDelete, _)
     | CppNewArray, Some (CppDeleteArray, _)
     | ObjCAlloc, _ ->
+            Printf.printf "\nattribute other alloc_free_match\n";
         true
     | JavaResource _, _ ->
+            Printf.printf "\nattribute java alloc_free_match\n";
         is_released
     | CSharpResource _, _ ->
+        (* never get here *)
+            Printf.printf "\nattribute csharp alloc_free_match\n";
         is_released
     | _ ->
+            F.printf "\nattribute unknown alloc_free_match (%a)\n" pp_allocator allocator;
         false
 
 
@@ -376,6 +407,12 @@ module Attribute = struct
     | PropagateTaintFrom taints_in ->
         let taints_in' = List.filter taints_in ~f:(fun {v} -> f_keep v) in
         if List.is_empty taints_in' then None else Some (PropagateTaintFrom taints_in')
+    | JavaResourceReleased ->
+            Printf.printf "\nhello attribute javaresourcereleased\n";
+            Some JavaResourceReleased
+    | CSharpResourceReleased ->
+            Printf.printf "\nhello attribute CSharpresourcereleased\n";
+            Some CSharpResourceReleased
     | ( AddressOfCppTemporary _
       | AddressOfStackVariable _
       | Allocated _
@@ -389,7 +426,6 @@ module Attribute = struct
       | MustBeInitialized _
       | MustBeValid _
       | MustNotBeTainted _
-      | JavaResourceReleased
       | RefCounted
       | SourceOriginOfCopy _
       | StdMoved
@@ -430,7 +466,7 @@ module Attributes = struct
         | TaintSanitized sanitizer -> sanitizer )
 
 
-  let is_java_resource_released = mem_by_rank Attribute.java_resource_released_rank
+  let is_java_resource_released = mem_by_rank Attribute.csharp_resource_released_rank
 
   let get_must_be_valid =
     get_by_rank Attribute.must_be_valid_rank ~dest:(function [@warning "-8"]
@@ -477,6 +513,7 @@ module Attributes = struct
     || mem_by_rank Attribute.invalid_rank attrs
     || mem_by_rank Attribute.unknown_effect_rank attrs
     || mem_by_rank Attribute.java_resource_released_rank attrs
+    || mem_by_rank Attribute.csharp_resource_released_rank attrs
 
 
   let is_always_reachable = mem_by_rank Attribute.always_reachable_rank
@@ -556,6 +593,8 @@ module Attributes = struct
     let allocated_opt = get_allocation attributes in
     Option.value_map ~default:None allocated_opt ~f:(fun (allocator, _) ->
         let invalidation = get_invalid attributes in
+        (* TODO(v-daflores): is this the issue? *)
+        Printf.printf "attribute get_allocated_not_freed (important?)\n";
         let is_released = is_java_resource_released attributes in
         if Attribute.alloc_free_match allocator invalidation is_released then None
         else allocated_opt )

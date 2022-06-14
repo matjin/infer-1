@@ -475,6 +475,7 @@ let get_trace = function
       @@ []
   | JavaResourceLeak {class_name; location; allocation_trace} ->
       (* NOTE: this is very similar to the MemoryLeak case *)
+          Printf.printf "Diagnostic java leak\n";
       let access_start_location = Trace.get_start_location allocation_trace in
       add_errlog_header ~nesting:0 ~title:"allocation part of the trace starts here"
         access_start_location
@@ -484,6 +485,7 @@ let get_trace = function
            allocation_trace
       @@ [Errlog.make_trace_element 0 location "memory becomes unreachable here" []]
   | CSharpResourceLeak {class_name; location; allocation_trace} ->
+          Printf.printf "Diagnostic csharp leak\n";
       (* NOTE: this is very similar to the MemoryLeak case *)
       let access_start_location = Trace.get_start_location allocation_trace in
       add_errlog_header ~nesting:0 ~title:"allocation part of the trace starts here"
